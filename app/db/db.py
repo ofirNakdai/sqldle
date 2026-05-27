@@ -14,7 +14,7 @@ class Base(DeclarativeBase):
 
 
 engine = create_engine(
-    settings.database_url,
+    settings.pg_connection_string,
     echo=settings.echo_sql,
     future=True,
     pool_pre_ping=True,
