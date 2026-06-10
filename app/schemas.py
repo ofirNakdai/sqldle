@@ -92,6 +92,18 @@ class DailyChallengeOut(CamelModel):
     challenge: ChallengeOut
 
 
+class ChallengeGenerateRequest(CamelModel):
+    """Optional steering for AI challenge generation. All fields optional."""
+
+    difficulty: Difficulty | None = None
+    topics: list[SqlTopic] = Field(default_factory=list)
+    tables: list[str] = Field(default_factory=list)
+    theme: str | None = Field(
+        default=None,
+        description="Freeform guidance for the kind of challenge to create.",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Track / lesson
 # ---------------------------------------------------------------------------
@@ -222,6 +234,7 @@ __all__ = [
     "HintOut",
     "ChallengeOut",
     "DailyChallengeOut",
+    "ChallengeGenerateRequest",
     "LessonOut",
     "TrackOut",
     "SubmissionCreate",

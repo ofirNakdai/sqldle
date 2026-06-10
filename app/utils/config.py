@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     pg_connection_string: str 
     echo_sql: bool
 
+    # --- AI challenge generation (optional) ---------------------------------
+    # Uses the OpenAI Python SDK, which also targets Azure OpenAI / Foundry and
+    # any OpenAI-compatible endpoint. Leave the key empty to disable the
+    # `POST /api/challenges/generate` endpoint.
+    openai_api_key: str | None = None
+    openai_base_url: str | None = None
+    openai_model: str = "gpt-4o-mini"
+
 
 
     

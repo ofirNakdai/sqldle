@@ -12,20 +12,24 @@ import sys
 
 from app.utils.config import settings
 from app.db.db import Base, SessionLocal, engine
-# import models  # noqa: F401  -- ensure models are registered on Base.metadata
+from app.db import models  # noqa: F401  -- ensure models are registered on Base.metadata
 from app.db.seed import seed_all
+from app.db.sandboxes import build_sandbox
 
 
 def init_db(drop: bool = False) -> None:
     if drop:
-        print(f"Dropping all tables on {settings.database_url}")
+        print(f"Dropping all tables on {settings.pg_connection_string}")
         Base.metadata.drop_all(bind=engine)
 
-    print(f"Creating tables on {settings.database_url}")
+    print(f"Creating tables on {settings.pg_connection_string}")
     Base.metadata.create_all(bind=engine)
 
     with SessionLocal() as session:
         seed_all(session)
+
+    print("Building shared sandbox schema...")
+    build_sandbox()
     print("Database initialized.")
 
 

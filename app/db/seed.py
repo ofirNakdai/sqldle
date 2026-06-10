@@ -33,6 +33,94 @@ TOPICS: list[tuple[str, str]] = [
 
 
 # ---------------------------------------------------------------------------
+# Shared sandbox dataset
+# ---------------------------------------------------------------------------
+#
+# Every challenge runs against ONE shared schema. Tables that appear in
+# multiple challenges (e.g. `orders`, `employees`) are unified here with a
+# superset of columns, so a single set of tables satisfies all challenges.
+#
+# `SHARED_TABLES` is the single source of truth:
+#   * `app.db.sandboxes` builds these tables (+ rows) into one schema.
+#   * Each challenge's `schema_tables` is derived from these definitions for
+#     the frontend "schema" panel (see `_tables(*names)` below).
+#   * `expected_rows` for every challenge was computed by running its
+#     canonical solution against this exact dataset.
+
+SHARED_TABLES: dict[str, dict[str, Any]] = {
+    "customers": {
+        "name": "customers",
+        "columns": [
+            {"name": "id", "type": "INT", "note": "PK"},
+            {"name": "name", "type": "TEXT"},
+            {"name": "country", "type": "TEXT"},
+        ],
+        "sampleRows": [
+            {"id": 1, "name": "Acme Corp", "country": "US"},
+            {"id": 2, "name": "Globex", "country": "DE"},
+            {"id": 3, "name": "Initech", "country": "US"},
+            {"id": 4, "name": "Umbrella", "country": "GB"},
+        ],
+    },
+    "orders": {
+        "name": "orders",
+        "columns": [
+            {"name": "id", "type": "INT", "note": "PK"},
+            {"name": "customer_id", "type": "INT", "note": "FK customers.id"},
+            {"name": "amount", "type": "NUMERIC"},
+            {"name": "created_at", "type": "TIMESTAMP", "note": "indexed"},
+        ],
+        "sampleRows": [
+            {"id": 101, "customer_id": 1, "amount": 250, "created_at": "2025-11-01 09:00:00"},
+            {"id": 102, "customer_id": 1, "amount": 50, "created_at": "2025-11-01 15:30:00"},
+            {"id": 103, "customer_id": 2, "amount": 90, "created_at": "2025-11-01 11:00:00"},
+            {"id": 104, "customer_id": 1, "amount": 410, "created_at": "2025-11-02 10:15:00"},
+            {"id": 105, "customer_id": 3, "amount": 200, "created_at": "2025-11-02 14:00:00"},
+            {"id": 106, "customer_id": 3, "amount": 120, "created_at": "2025-11-12 10:00:00"},
+            {"id": 107, "customer_id": 2, "amount": 75, "created_at": "2025-11-12 16:45:00"},
+            {"id": 108, "customer_id": 4, "amount": 300, "created_at": "2025-11-13 08:30:00"},
+        ],
+    },
+    "employees": {
+        "name": "employees",
+        "columns": [
+            {"name": "id", "type": "INT", "note": "PK"},
+            {"name": "name", "type": "TEXT"},
+            {"name": "salary", "type": "NUMERIC"},
+            {"name": "manager_id", "type": "INT", "note": "FK employees.id"},
+        ],
+        "sampleRows": [
+            {"id": 1, "name": "Ada", "salary": 300, "manager_id": None},
+            {"id": 2, "name": "Bo", "salary": 200, "manager_id": 1},
+            {"id": 3, "name": "Cy", "salary": 150, "manager_id": 2},
+            {"id": 4, "name": "Di", "salary": 200, "manager_id": 1},
+            {"id": 5, "name": "Eve", "salary": 100, "manager_id": 3},
+        ],
+    },
+    "logins": {
+        "name": "logins",
+        "columns": [
+            {"name": "user_id", "type": "INT"},
+            {"name": "login_date", "type": "DATE"},
+        ],
+        "sampleRows": [
+            {"user_id": 1, "login_date": "2025-11-01"},
+            {"user_id": 1, "login_date": "2025-11-02"},
+            {"user_id": 1, "login_date": "2025-11-03"},
+            {"user_id": 1, "login_date": "2025-11-05"},
+            {"user_id": 2, "login_date": "2025-11-01"},
+            {"user_id": 2, "login_date": "2025-11-02"},
+        ],
+    },
+}
+
+
+def _tables(*names: str) -> list[dict[str, Any]]:
+    """Return shared table definitions for the frontend schema panel."""
+    return [SHARED_TABLES[n] for n in names]
+
+
+# ---------------------------------------------------------------------------
 # Challenges
 # ---------------------------------------------------------------------------
 
@@ -49,40 +137,12 @@ CHALLENGES: list[dict[str, Any]] = [
             "`customer_name` and `total_revenue` ordered by `total_revenue` "
             "descending."
         ),
-        "schema_tables": [
-            {
-                "name": "customers",
-                "columns": [
-                    {"name": "id", "type": "INT", "note": "PK"},
-                    {"name": "name", "type": "TEXT"},
-                    {"name": "country", "type": "TEXT"},
-                ],
-                "sampleRows": [
-                    {"id": 1, "name": "Acme Corp", "country": "US"},
-                    {"id": 2, "name": "Globex", "country": "DE"},
-                    {"id": 3, "name": "Initech", "country": "US"},
-                ],
-            },
-            {
-                "name": "orders",
-                "columns": [
-                    {"name": "id", "type": "INT", "note": "PK"},
-                    {"name": "customer_id", "type": "INT", "note": "FK customers.id"},
-                    {"name": "amount", "type": "NUMERIC"},
-                    {"name": "created_at", "type": "TIMESTAMP"},
-                ],
-                "sampleRows": [
-                    {"id": 101, "customer_id": 1, "amount": 250.0, "created_at": "2025-11-02"},
-                    {"id": 102, "customer_id": 2, "amount": 90.0, "created_at": "2025-11-04"},
-                    {"id": 103, "customer_id": 1, "amount": 410.0, "created_at": "2025-11-09"},
-                ],
-            },
-        ],
+        "schema_tables": _tables("customers", "orders"),
         "expected_columns": ["customer_name", "total_revenue"],
         "expected_rows": [
-            ["Acme Corp", 660],
+            ["Acme Corp", 710],
             ["Initech", 320],
-            ["Globex", 90],
+            ["Umbrella", 300],
         ],
         "starter_sql": (
             "-- Join customers and orders, sum amount, return top 3.\n"
@@ -113,21 +173,7 @@ CHALLENGES: list[dict[str, Any]] = [
             "`salary`. If it does not exist, return `NULL`. Output a single "
             "column named `second_highest`."
         ),
-        "schema_tables": [
-            {
-                "name": "employees",
-                "columns": [
-                    {"name": "id", "type": "INT"},
-                    {"name": "name", "type": "TEXT"},
-                    {"name": "salary", "type": "NUMERIC"},
-                ],
-                "sampleRows": [
-                    {"id": 1, "name": "A", "salary": 100},
-                    {"id": 2, "name": "B", "salary": 200},
-                    {"id": 3, "name": "C", "salary": 300},
-                ],
-            }
-        ],
+        "schema_tables": _tables("employees"),
         "expected_columns": ["second_highest"],
         "expected_rows": [[200]],
         "starter_sql": (
@@ -155,33 +201,22 @@ CHALLENGES: list[dict[str, Any]] = [
         "topics": ["window-functions"],
         "estimated_minutes": 15,
         "prompt": (
-            "For each day in `orders`, compute the running total of `amount` "
-            "ordered by date. Output `day`, `daily_total`, `running_total`."
+            "For each calendar day in `orders`, compute the running total of "
+            "`amount` ordered by date. `created_at` is a `TIMESTAMP`, so cast "
+            "it to a date. Output `day`, `daily_total`, `running_total`."
         ),
-        "schema_tables": [
-            {
-                "name": "orders",
-                "columns": [
-                    {"name": "id", "type": "INT"},
-                    {"name": "amount", "type": "NUMERIC"},
-                    {"name": "created_at", "type": "DATE"},
-                ],
-                "sampleRows": [
-                    {"id": 1, "amount": 100, "created_at": "2025-11-01"},
-                    {"id": 2, "amount": 50, "created_at": "2025-11-01"},
-                    {"id": 3, "amount": 200, "created_at": "2025-11-02"},
-                ],
-            }
-        ],
+        "schema_tables": _tables("orders"),
         "expected_columns": ["day", "daily_total", "running_total"],
         "expected_rows": [
-            ["2025-11-01", 150, 150],
-            ["2025-11-02", 200, 350],
+            ["2025-11-01", 390, 390],
+            ["2025-11-02", 610, 1000],
+            ["2025-11-12", 195, 1195],
+            ["2025-11-13", 300, 1495],
         ],
         "starter_sql": (
-            "SELECT\n  created_at AS day,\n  SUM(amount) AS daily_total,\n"
-            "  SUM(SUM(amount)) OVER (ORDER BY created_at) AS running_total\n"
-            "FROM orders\nGROUP BY created_at\nORDER BY created_at;"
+            "SELECT\n  created_at::date AS day,\n  SUM(amount) AS daily_total,\n"
+            "  SUM(SUM(amount)) OVER (ORDER BY created_at::date) AS running_total\n"
+            "FROM orders\nGROUP BY created_at::date\nORDER BY created_at::date;"
         ),
         "hints": [
             "Aggregate by day first.",
@@ -204,26 +239,13 @@ CHALLENGES: list[dict[str, Any]] = [
             "Return each customer's first order: `customer_id`, `order_id`, "
             "`amount`, `created_at`. Use a window function."
         ),
-        "schema_tables": [
-            {
-                "name": "orders",
-                "columns": [
-                    {"name": "id", "type": "INT"},
-                    {"name": "customer_id", "type": "INT"},
-                    {"name": "amount", "type": "NUMERIC"},
-                    {"name": "created_at", "type": "TIMESTAMP"},
-                ],
-                "sampleRows": [
-                    {"id": 1, "customer_id": 1, "amount": 50, "created_at": "2025-10-01"},
-                    {"id": 2, "customer_id": 1, "amount": 70, "created_at": "2025-10-09"},
-                    {"id": 3, "customer_id": 2, "amount": 30, "created_at": "2025-10-05"},
-                ],
-            }
-        ],
+        "schema_tables": _tables("orders"),
         "expected_columns": ["customer_id", "order_id", "amount", "created_at"],
         "expected_rows": [
-            [1, 1, 50, "2025-10-01"],
-            [2, 3, 30, "2025-10-05"],
+            [1, 101, 250, "2025-11-01T09:00:00"],
+            [2, 103, 90, "2025-11-01T11:00:00"],
+            [3, 105, 200, "2025-11-02T14:00:00"],
+            [4, 108, 300, "2025-11-13T08:30:00"],
         ],
         "starter_sql": (
             "WITH ranked AS (\n"
@@ -256,26 +278,14 @@ CHALLENGES: list[dict[str, Any]] = [
             "with their reporting chain depth from the CEO (manager_id IS NULL). "
             "Output `id`, `name`, `depth`."
         ),
-        "schema_tables": [
-            {
-                "name": "employees",
-                "columns": [
-                    {"name": "id", "type": "INT"},
-                    {"name": "name", "type": "TEXT"},
-                    {"name": "manager_id", "type": "INT"},
-                ],
-                "sampleRows": [
-                    {"id": 1, "name": "Ada", "manager_id": None},
-                    {"id": 2, "name": "Bo", "manager_id": 1},
-                    {"id": 3, "name": "Cy", "manager_id": 2},
-                ],
-            }
-        ],
+        "schema_tables": _tables("employees"),
         "expected_columns": ["id", "name", "depth"],
         "expected_rows": [
             [1, "Ada", 0],
             [2, "Bo", 1],
+            [4, "Di", 1],
             [3, "Cy", 2],
+            [5, "Eve", 3],
         ],
         "starter_sql": (
             "WITH RECURSIVE chain AS (\n"
@@ -310,22 +320,12 @@ CHALLENGES: list[dict[str, Any]] = [
             "logins, find the longest consecutive-day login streak per user. "
             "Output `user_id`, `streak_length`, `streak_start`, `streak_end`."
         ),
-        "schema_tables": [
-            {
-                "name": "logins",
-                "columns": [
-                    {"name": "user_id", "type": "INT"},
-                    {"name": "login_date", "type": "DATE"},
-                ],
-                "sampleRows": [
-                    {"user_id": 1, "login_date": "2025-11-01"},
-                    {"user_id": 1, "login_date": "2025-11-02"},
-                    {"user_id": 1, "login_date": "2025-11-04"},
-                ],
-            }
-        ],
+        "schema_tables": _tables("logins"),
         "expected_columns": ["user_id", "streak_length", "streak_start", "streak_end"],
-        "expected_rows": [[1, 2, "2025-11-01", "2025-11-02"]],
+        "expected_rows": [
+            [1, 3, "2025-11-01", "2025-11-03"],
+            [2, 2, "2025-11-01", "2025-11-02"],
+        ],
         "starter_sql": None,
         "hints": [
             "Subtract `ROW_NUMBER()` from the date to form group keys.",
@@ -349,22 +349,13 @@ CHALLENGES: list[dict[str, Any]] = [
             "one column per month: `year`, `jan`, `feb`, ..., `dec`. Use "
             "`SUM(amount)`."
         ),
-        "schema_tables": [
-            {
-                "name": "orders",
-                "columns": [
-                    {"name": "amount", "type": "NUMERIC"},
-                    {"name": "created_at", "type": "DATE"},
-                ],
-                "sampleRows": [{"amount": 100, "created_at": "2025-01-15"}],
-            }
-        ],
+        "schema_tables": _tables("orders"),
         "expected_columns": [
             "year",
             "jan", "feb", "mar", "apr", "may", "jun",
             "jul", "aug", "sep", "oct", "nov", "dec",
         ],
-        "expected_rows": [[2025, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+        "expected_rows": [[2025, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1495, 0]],
         "starter_sql": None,
         "hints": [
             "Use `SUM(CASE WHEN month = X THEN amount ELSE 0 END)` per month.",
@@ -386,18 +377,12 @@ CHALLENGES: list[dict[str, Any]] = [
             "is slow even with an index on `created_at`. Rewrite the WHERE clause "
             "so an index on `created_at` can be used."
         ),
-        "schema_tables": [
-            {
-                "name": "orders",
-                "columns": [
-                    {"name": "id", "type": "INT"},
-                    {"name": "created_at", "type": "TIMESTAMP", "note": "indexed"},
-                ],
-                "sampleRows": [{"id": 1, "created_at": "2025-11-12 10:00:00"}],
-            }
-        ],
+        "schema_tables": _tables("orders"),
         "expected_columns": ["id", "created_at"],
-        "expected_rows": [[1, "2025-11-12 10:00:00"]],
+        "expected_rows": [
+            [106, "2025-11-12T10:00:00"],
+            [107, "2025-11-12T16:45:00"],
+        ],
         "starter_sql": (
             "SELECT id, created_at\nFROM orders\n"
             "WHERE created_at >= '2025-11-12'\n  AND created_at <  '2025-11-13';"
@@ -597,68 +582,23 @@ ACHIEVEMENTS: list[dict[str, Any]] = [
 
 
 # ---------------------------------------------------------------------------
-# Demo user + progress (mirrors `userProgress` in the frontend mock)
+# Demo user (created fresh, with no progress)
 # ---------------------------------------------------------------------------
 
+# Fresh user: no progress, as if the site is being run for the first time.
+# Achievements, topic mastery, track progress and submissions are all earned
+# at runtime by playing, so none are seeded here.
 DEMO_USER: dict[str, Any] = {
     "id": "u1",
     "display_name": "You",
     "avatar_color": "#7c5cff",
     "email": "demo@sqldle.local",
-    "xp": 1480,
-    "level": 4,
-    "total_solved": 14,
-    "current_streak": 6,
-    "best_streak": 11,
+    "xp": 0,
+    "level": 1,
+    "total_solved": 0,
+    "current_streak": 0,
+    "best_streak": 0,
 }
-
-TOPIC_MASTERY: list[tuple[str, float]] = [
-    ("basics", 0.95),
-    ("filtering", 0.90),
-    ("joins", 0.78),
-    ("aggregation", 0.72),
-    ("subqueries", 0.55),
-    ("window-functions", 0.48),
-    ("ctes", 0.32),
-    ("performance", 0.25),
-    ("indexing", 0.20),
-]
-
-USER_ACHIEVEMENTS: list[tuple[str, datetime]] = [
-    ("first-solve", datetime(2026, 4, 30, tzinfo=timezone.utc)),
-    ("streak-7", datetime(2026, 5, 12, tzinfo=timezone.utc)),
-]
-
-# Recent submissions for the demo user.
-RECENT_SUBMISSIONS: list[dict[str, Any]] = [
-    {
-        "id": "s1",
-        "challenge_id": "ch-top-customers",
-        "status": m.SubmissionStatus.pass_,
-        "message": "All test cases passed.",
-        "duration_ms": 124,
-        "created_at": datetime(2026, 5, 20, 18, 42, tzinfo=timezone.utc),
-        "sql": "SELECT c.name, SUM(o.amount) FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.name ORDER BY 2 DESC LIMIT 3;",
-    },
-    {
-        "id": "s2",
-        "challenge_id": "ch-second-highest-salary",
-        "status": m.SubmissionStatus.fail,
-        "message": "Returned 1 row, expected 1 row but values differ.",
-        "duration_ms": 88,
-        "created_at": datetime(2026, 5, 20, 17, 11, tzinfo=timezone.utc),
-        "sql": "SELECT MAX(salary) FROM employees;",
-    },
-    {
-        "id": "s3",
-        "challenge_id": "ch-running-total",
-        "status": m.SubmissionStatus.pass_,
-        "message": "All test cases passed.",
-        "duration_ms": 162,
-        "created_at": datetime(2026, 5, 19, 20, 2, tzinfo=timezone.utc),
-        "sql": "SELECT created_at, SUM(amount), SUM(SUM(amount)) OVER (ORDER BY created_at) FROM orders GROUP BY created_at;",
-    },
-]
 
 
 # ---------------------------------------------------------------------------
@@ -751,7 +691,7 @@ def seed_all(session: Session) -> None:
             )
         )
 
-    # Demo user
+    # Demo user (fresh start: no submissions, achievements, mastery or progress)
     user = m.User(
         id=DEMO_USER["id"],
         email=DEMO_USER["email"],
@@ -762,59 +702,9 @@ def seed_all(session: Session) -> None:
         total_solved=DEMO_USER["total_solved"],
         current_streak=DEMO_USER["current_streak"],
         best_streak=DEMO_USER["best_streak"],
-        last_activity_day=today,
+        last_activity_day=None,
     )
     session.add(user)
-    session.flush()
-
-    # User achievements
-    for ach_id, unlocked_at in USER_ACHIEVEMENTS:
-        session.add(
-            m.UserAchievement(
-                user_id=user.id, achievement_id=ach_id, unlocked_at=unlocked_at
-            )
-        )
-
-    # Topic mastery
-    for slug, mastery in TOPIC_MASTERY:
-        session.add(
-            m.TopicMastery(
-                user_id=user.id, topic_id=topics_by_slug[slug].id, mastery=mastery
-            )
-        )
-
-    # Track progress (precomputed; real app would recalculate from submissions)
-    track_progress = {
-        "tr-foundations": (1, 1),
-        "tr-windows": (2, 3),
-        "tr-advanced": (0, 3),
-        "tr-perf": (0, 1),
-        "tr-interview": (1, 6),
-    }
-    for tid, (done, total) in track_progress.items():
-        session.add(
-            m.TrackProgress(
-                user_id=user.id,
-                track_id=tid,
-                completed_lessons=done,
-                total_lessons=total,
-            )
-        )
-
-    # Recent submissions
-    for s in RECENT_SUBMISSIONS:
-        session.add(
-            m.Submission(
-                id=s["id"],
-                user_id=user.id,
-                challenge_id=s["challenge_id"],
-                sql=s["sql"],
-                status=s["status"],
-                message=s["message"],
-                duration_ms=s["duration_ms"],
-                created_at=s["created_at"],
-            )
-        )
 
     session.commit()
 
